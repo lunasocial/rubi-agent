@@ -11,7 +11,7 @@ import store
 
 logger = logging.getLogger("rubi.agent")
 
-_MODEL = os.getenv("RUBI_MODEL", "gemini-2.5-flash")
+_MODEL = os.getenv("RUBI_MODEL", "gemini-3-flash-preview")
 _KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 _client = None
 

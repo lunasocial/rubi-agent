@@ -5,8 +5,9 @@ import asyncio
 import logging
 
 from fastapi import FastAPI, Request
+import os
+
 from fastapi.responses import JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 
 import agent
 import linq
@@ -60,4 +61,4 @@ async def data():
 
 @app.get("/")
 async def index():
-    return FileResponse("dashboard/index.html")
+    return FileResponse(os.path.join(os.path.dirname(__file__), "dashboard", "index.html"))
