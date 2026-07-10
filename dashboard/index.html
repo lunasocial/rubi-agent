@@ -3,110 +3,181 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rubirosa , Receptionist</title>
+<title>Rubirosa , AI Receptionist</title>
 <base href="./">
 <style>
-  :root { --bg:#0f0f10; --card:#1a1a1c; --line:#2a2a2e; --text:#f2ede4; --muted:#8a8a90;
-          --accent:#e0563a; --green:#3ecf8e; }
+  :root { --bg:#1a1a1a; --surface:#2a2a2a; --line:#333; --cream:#f5f0e8; --muted:#8f8a80;
+          --coral:#e85d3a; }
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { background:var(--bg); color:var(--text); font-family:-apple-system,system-ui,sans-serif; }
-  header { padding:22px 28px; border-bottom:1px solid var(--line); display:flex;
-           align-items:baseline; gap:14px; }
-  header h1 { font-size:20px; letter-spacing:.5px; }
-  header .sub { color:var(--muted); font-size:13px; text-transform:uppercase; letter-spacing:2px; }
-  header .live { margin-left:auto; color:var(--green); font-size:12px; text-transform:uppercase;
-                 letter-spacing:1px; display:flex; align-items:center; gap:7px; }
-  header .dot { width:8px; height:8px; border-radius:50%; background:var(--green);
-                animation:pulse 1.6s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; padding:22px 28px; }
-  .stat { background:var(--card); border:1px solid var(--line); padding:18px 20px; }
-  .stat .n { font-size:32px; font-weight:600; }
-  .stat .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:1.5px;
-             margin-top:6px; }
-  .grid { display:grid; grid-template-columns:1.3fr 1fr; gap:14px; padding:0 28px 28px; }
-  .panel { background:var(--card); border:1px solid var(--line); }
-  .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:2px; color:var(--muted);
-              padding:16px 20px; border-bottom:1px solid var(--line); }
-  .row { padding:14px 20px; border-bottom:1px solid var(--line); font-size:14px; }
+  body { background:var(--bg); color:var(--cream);
+         font-family:'JetBrains Mono','SF Mono',Consolas,monospace; font-size:13px; }
+  .label { text-transform:uppercase; letter-spacing:2px; font-size:10px; color:var(--muted); }
+  header { display:flex; align-items:center; gap:16px; padding:20px 26px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:18px; letter-spacing:1px; text-transform:uppercase; }
+  header .kind { color:var(--coral); }
+  header .live { margin-left:auto; color:var(--coral); display:flex; align-items:center; gap:8px;
+                 text-transform:uppercase; letter-spacing:2px; font-size:10px; }
+  header .dot { width:7px; height:7px; background:var(--coral); animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  .metrics { display:grid; grid-template-columns:repeat(5,1fr); border-bottom:1px solid var(--line); }
+  .metric { padding:22px 24px; border-right:1px solid var(--line); }
+  .metric:last-child { border-right:none; }
+  .metric .n { font-size:34px; font-weight:500; letter-spacing:-1px; }
+  .metric .n span { font-size:16px; color:var(--muted); }
+  .metric .label { margin-top:8px; }
+
+  .cols { display:grid; grid-template-columns:1fr 1fr; }
+  .col { border-right:1px solid var(--line); }
+  .col:last-child { border-right:none; }
+  .block { padding:20px 24px; border-bottom:1px solid var(--line); }
+  .block > .label { margin-bottom:16px; }
+
+  .bar { display:flex; align-items:center; gap:12px; margin:9px 0; }
+  .bar .k { width:120px; color:var(--cream); text-transform:capitalize; }
+  .bar .track { flex:1; height:14px; background:#1f1f1f; border:1px solid var(--line); position:relative; }
+  .bar .fill { height:100%; background:var(--coral); }
+  .bar .v { width:34px; text-align:right; color:var(--muted); }
+
+  .hours { display:flex; align-items:flex-end; gap:3px; height:90px; }
+  .hours .h { flex:1; background:#1f1f1f; border-top:2px solid var(--line); position:relative; }
+  .hours .h .f { position:absolute; bottom:0; left:0; right:0; background:var(--coral); }
+  .hours .h .t { position:absolute; bottom:-16px; left:0; right:0; text-align:center;
+                 font-size:8px; color:var(--muted); }
+
+  .row { padding:12px 24px; border-bottom:1px solid var(--line); }
   .row:last-child { border-bottom:none; }
-  .row .top { display:flex; justify-content:space-between; align-items:center; }
-  .row .name { font-weight:600; }
-  .row .meta { color:var(--muted); font-size:13px; margin-top:3px; }
-  .tag { font-size:11px; text-transform:uppercase; letter-spacing:1px; padding:3px 8px;
-         border:1px solid var(--line); color:var(--green); }
-  .tag.cancelled { color:var(--muted); }
-  .empty { padding:28px 20px; color:var(--muted); font-size:13px; }
-  .msg { padding:10px 20px; font-size:13px; border-bottom:1px solid var(--line); }
-  .msg .who { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:1px; }
-  .msg.user .who { color:var(--accent); }
-  .full { grid-column:1 / -1; }
+  .row .top { display:flex; justify-content:space-between; }
+  .row .name { color:var(--cream); }
+  .row .meta { color:var(--muted); font-size:11px; margin-top:3px; }
+  .tag { border:1px solid var(--coral); color:var(--coral); padding:2px 7px; font-size:9px;
+         text-transform:uppercase; letter-spacing:1px; }
+  .tag.off { border-color:var(--line); color:var(--muted); }
+  .empty { padding:22px 24px; color:var(--muted); font-size:11px; }
+
+  .feed .msg { padding:9px 24px; border-bottom:1px solid var(--line); animation:slide .3s ease; }
+  .feed .msg .who { font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
+  .feed .msg.in .who { color:var(--coral); }
+  .feed .msg .t { margin-top:2px; color:var(--cream); }
+  @keyframes slide { from{opacity:0; transform:translateY(-6px)} to{opacity:1; transform:none} }
+  .full { grid-column:1 / -1; border-top:1px solid var(--line); }
 </style>
 </head>
 <body>
 <header>
   <h1 id="biz">Rubirosa</h1>
-  <span class="sub">Receptionist Dashboard</span>
+  <span class="label kind">AI Receptionist</span>
   <span class="live"><span class="dot"></span> Live</span>
 </header>
 
-<div class="stats">
-  <div class="stat"><div class="n" id="s-res">0</div><div class="l">Reservations</div></div>
-  <div class="stat"><div class="n" id="s-cov">0</div><div class="l">Covers Booked</div></div>
-  <div class="stat"><div class="n" id="s-inq">0</div><div class="l">Inquiries</div></div>
-  <div class="stat"><div class="n" id="s-conv">0</div><div class="l">Conversations</div></div>
+<div class="metrics">
+  <div class="metric"><div class="n" id="m-conv">0</div><div class="label">Conversations</div></div>
+  <div class="metric"><div class="n" id="m-msg">0</div><div class="label">Messages Handled</div></div>
+  <div class="metric"><div class="n" id="m-book">0</div><div class="label">Bookings Captured</div></div>
+  <div class="metric"><div class="n" id="m-inq">0</div><div class="label">Requests Logged</div></div>
+  <div class="metric"><div class="n" id="m-resp">,</div><div class="label">Avg Response</div></div>
 </div>
 
-<div class="grid">
-  <div class="panel">
-    <h2>Reservations</h2>
-    <div id="res"></div>
+<div class="cols">
+  <div class="col">
+    <div class="block">
+      <div class="label">What Customers Ask About</div>
+      <div id="topics"></div>
+    </div>
   </div>
-  <div class="panel">
-    <h2>Inquiries &amp; Requests</h2>
+  <div class="col">
+    <div class="block">
+      <div class="label">When They Reach Out</div>
+      <div class="hours" id="hours"></div>
+    </div>
+  </div>
+</div>
+
+<div class="cols">
+  <div class="col">
+    <div class="block" style="border-bottom:none"><div class="label">Bookings Captured</div></div>
+    <div id="bookings"></div>
+  </div>
+  <div class="col">
+    <div class="block" style="border-bottom:none"><div class="label">Requests For The Team</div></div>
     <div id="inq"></div>
   </div>
-  <div class="panel full">
-    <h2>Live Conversation Feed</h2>
-    <div id="feed"></div>
-  </div>
+</div>
+
+<div class="full">
+  <div class="block" style="border-bottom:none"><div class="label">Live Activity</div></div>
+  <div class="feed" id="feed"></div>
 </div>
 
 <script>
 const esc = s => (s||"").replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const when = ts => { if(!ts) return ""; const d=new Date(ts*1000);
-  return d.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}); };
 const mask = p => (p||"").replace(/^(\+?\d{0,2}).*(\d{2})$/, "$1•••$2");
+const when = ts => ts ? new Date(ts*1000).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : "";
+
+const TOPICS = [
+  ["Reservations", /reserv|table|book|party of|seat|tonight|tomorrow|\bpm\b|\bam\b/i],
+  ["Menu & food",  /menu|pizza|pasta|dish|gluten|vegan|vegetarian|allerg|special|tie ?dye|vodka/i],
+  ["Hours",        /hour|open|close|when.*open|still open/i],
+  ["Location",     /where|address|located|direction|park|street|near/i],
+  ["Takeout / delivery", /delivery|deliver|takeout|take out|pickup|pick up|to go/i],
+];
+const bucket = t => { for (const [name,re] of TOPICS) if (re.test(t)) return name; return "Other"; };
 
 async function refresh() {
   let d; try { d = await (await fetch('api/data')).json(); } catch { return; }
   document.getElementById('biz').textContent = d.business || 'Rubirosa';
   const res = d.reservations||[], inq = d.inquiries||[], msgs = d.messages||[];
   const active = res.filter(r => r.status !== 'cancelled');
-  document.getElementById('s-res').textContent = active.length;
-  document.getElementById('s-cov').textContent = active.reduce((a,r)=>a+(+r.party_size||0),0);
-  document.getElementById('s-inq').textContent = inq.length;
-  document.getElementById('s-conv').textContent = new Set(msgs.map(m=>m.customer_phone)).size;
+  const inbound = msgs.filter(m => m.role === 'user');
 
-  document.getElementById('res').innerHTML = res.length ? res.map(r => `
-    <div class="row"><div class="top">
-      <span class="name">${esc(r.name)||'Guest'} , party of ${esc(''+(r.party_size||'?'))}</span>
-      <span class="tag ${r.status==='cancelled'?'cancelled':''}">${esc(r.status||'confirmed')}</span>
-    </div><div class="meta">${esc(r.date)} at ${esc(r.time)} · ${mask(r.customer_phone)} · #${esc(r.id)}</div>
-    ${r.notes?`<div class="meta">${esc(r.notes)}</div>`:''}</div>`).join('')
-    : '<div class="empty">No reservations yet.</div>';
+  document.getElementById('m-conv').textContent = new Set(msgs.map(m=>m.customer_phone)).size;
+  document.getElementById('m-msg').textContent = msgs.length;
+  document.getElementById('m-book').textContent = active.length;
+  document.getElementById('m-inq').textContent = inq.length;
 
-  document.getElementById('inq').innerHTML = inq.length ? inq.map(q => `
-    <div class="row"><div class="name">${esc(q.name)||'Caller'}</div>
-    <div class="meta">${esc(q.question)}</div>
-    <div class="meta">${mask(q.customer_phone)} · ${when(q.created_at)}</div></div>`).join('')
-    : '<div class="empty">No inquiries yet.</div>';
+  // avg response: gap between an inbound msg and the next assistant reply in that conversation
+  const byPhone = {};
+  msgs.slice().sort((a,b)=>a.created_at-b.created_at).forEach(m => (byPhone[m.customer_phone]??=[]).push(m));
+  let gaps = [];
+  Object.values(byPhone).forEach(arr => arr.forEach((m,i)=>{
+    if (m.role==='user' && arr[i+1] && arr[i+1].role==='assistant')
+      gaps.push(arr[i+1].created_at - m.created_at); }));
+  const avg = gaps.length ? Math.round(gaps.reduce((a,b)=>a+b,0)/gaps.length) : null;
+  document.getElementById('m-resp').innerHTML = avg==null ? ',' : (avg<60?`${avg}<span>s</span>`:`${Math.round(avg/60)}<span>m</span>`);
 
-  document.getElementById('feed').innerHTML = msgs.length ? msgs.slice().reverse().slice(-40).map(m => `
-    <div class="msg ${m.role==='user'?'user':''}">
-      <span class="who">${m.role==='user'?mask(m.customer_phone):'Rubirosa'}</span>
-      &nbsp; ${esc(m.text)}</div>`).join('')
-    : '<div class="empty">Conversations will appear here as customers text in.</div>';
+  // topics
+  const counts = {}; inbound.forEach(m => { const b=bucket(m.text||''); counts[b]=(counts[b]||0)+1; });
+  const order = [...TOPICS.map(t=>t[0]), "Other"];
+  const max = Math.max(1, ...Object.values(counts));
+  document.getElementById('topics').innerHTML = order.filter(k=>counts[k]).map(k => `
+    <div class="bar"><div class="k">${k}</div>
+      <div class="track"><div class="fill" style="width:${Math.round(counts[k]/max*100)}%"></div></div>
+      <div class="v">${counts[k]}</div></div>`).join('') || '<div class="empty">No questions yet.</div>';
+
+  // busiest hours (0-23)
+  const hrs = new Array(24).fill(0);
+  inbound.forEach(m => { if(m.created_at) hrs[new Date(m.created_at*1000).getHours()]++; });
+  const hmax = Math.max(1, ...hrs);
+  document.getElementById('hours').innerHTML = hrs.map((c,i) => `
+    <div class="h" title="${i}:00 , ${c}"><div class="f" style="height:${c/hmax*100}%"></div>
+      ${i%6===0?`<div class="t">${i}</div>`:''}</div>`).join('');
+
+  document.getElementById('bookings').innerHTML = active.length ? active.slice(0,8).map(r => `
+    <div class="row"><div class="top"><span class="name">${esc(r.name)||'Guest'} · ${esc(''+(r.party_size||'?'))} ppl</span>
+      <span class="tag">${esc(r.status||'confirmed')}</span></div>
+      <div class="meta">${esc(r.date)} ${esc(r.time)} · ${mask(r.customer_phone)}</div></div>`).join('')
+    : '<div class="empty">Bookings appear here as customers make them.</div>';
+
+  document.getElementById('inq').innerHTML = inq.length ? inq.slice(0,8).map(q => `
+    <div class="row"><div class="name">${esc(q.question)}</div>
+      <div class="meta">${mask(q.customer_phone)} · ${when(q.created_at)}</div></div>`).join('')
+    : '<div class="empty">Special requests the agent flags for the team show here.</div>';
+
+  document.getElementById('feed').innerHTML = msgs.slice(0,30).map(m => `
+    <div class="msg ${m.role==='user'?'in':''}">
+      <span class="who">${m.role==='user'?mask(m.customer_phone):'Rubirosa AI'}</span>
+      <div class="t">${esc(m.text)}</div></div>`).join('')
+    || '<div class="empty">Conversations appear here in real time.</div>';
 }
 refresh(); setInterval(refresh, 4000);
 </script>
