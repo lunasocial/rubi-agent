@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rubirosa , Receptionist</title>
+<base href="./">
 <style>
   :root { --bg:#0f0f10; --card:#1a1a1c; --line:#2a2a2e; --text:#f2ede4; --muted:#8a8a90;
           --accent:#e0563a; --green:#3ecf8e; }
@@ -78,7 +79,7 @@ const when = ts => { if(!ts) return ""; const d=new Date(ts*1000);
 const mask = p => (p||"").replace(/^(\+?\d{0,2}).*(\d{2})$/, "$1•••$2");
 
 async function refresh() {
-  let d; try { d = await (await fetch('/api/data')).json(); } catch { return; }
+  let d; try { d = await (await fetch('api/data')).json(); } catch { return; }
   document.getElementById('biz').textContent = d.business || 'Rubirosa';
   const res = d.reservations||[], inq = d.inquiries||[], msgs = d.messages||[];
   const active = res.filter(r => r.status !== 'cancelled');
