@@ -3,3 +3,5 @@ uvicorn[standard]
 httpx
 firebase-admin
 google-genai
+curl_cffi
+python-dotenv

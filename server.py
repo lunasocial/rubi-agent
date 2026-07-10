@@ -7,6 +7,12 @@ import json
 import logging
 import os
 
+try:                                     # load .env before importing modules that read env at import
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+except Exception:
+    pass
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 

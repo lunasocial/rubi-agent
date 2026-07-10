@@ -11,6 +11,7 @@ BUSINESSES = {
         "known_for": "thin-crust pizza (the famous TIE DYE and Vodka pies), handmade pasta, and "
                      "reinvented Italian-American classics",
         "owner_phone": "",
+        "resy": {"venue_id": "466", "city": "ny", "url_slug": "rubirosa"},
         "reservation_policy": "We take reservations for parties of 1-8. Larger groups and private events "
                               "are handled separately. Walk-ins are welcome but there's often a wait on weekends.",
         "takeout": "Yes, pickup and delivery are available for pizza and pasta.",
@@ -60,6 +61,7 @@ BUSINESSES = {
         "known_for": "warm hospitality, handmade pasta, and excellent seafood (est. 1992), an eclectic "
                      "Italian-American menu",
         "owner_phone": "",
+        "resy": {"venue_id": "40209", "city": "ny", "url_slug": "giorgios-of-gramercy"},
         "reservation_policy": "Reservations are recommended and we also take walk-ins based on availability. "
                               "We offer private dining and catering.",
         "takeout": "Yes, online ordering and takeout are available.",
