@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rubirosa , AI Receptionist</title>
+<title>AI Receptionist</title>
 <base href="./">
 <style>
   :root { --bg:#f3efe7; --surface:#ffffff; --line:#ddd7cb; --cream:#1c1a17; --muted:#8a8478;
@@ -65,7 +65,7 @@
 </head>
 <body>
 <header>
-  <h1 id="biz">Rubirosa</h1>
+  <h1 id="biz">,</h1>
   <span class="label kind">AI Receptionist</span>
   <span class="live"><span class="dot"></span> Live</span>
 </header>
@@ -123,9 +123,12 @@ const TOPICS = [
 ];
 const bucket = t => { for (const [name,re] of TOPICS) if (re.test(t)) return name; return "Other"; };
 
+let BIZ = '';
 async function refresh() {
   let d; try { d = await (await fetch('api/data')).json(); } catch { return; }
-  document.getElementById('biz').textContent = d.business || 'Rubirosa';
+  BIZ = d.business || '';
+  document.getElementById('biz').textContent = BIZ || 'Receptionist';
+  document.title = BIZ ? `${BIZ} , AI Receptionist` : 'AI Receptionist';
   const res = d.reservations||[], inq = d.inquiries||[], msgs = d.messages||[];
   const active = res.filter(r => r.status !== 'cancelled');
   const inbound = msgs.filter(m => m.role === 'user');
@@ -175,7 +178,7 @@ async function refresh() {
 
   document.getElementById('feed').innerHTML = msgs.slice(0,30).map(m => `
     <div class="msg ${m.role==='user'?'in':''}">
-      <span class="who">${m.role==='user'?mask(m.customer_phone):'Rubirosa AI'}</span>
+      <span class="who">${m.role==='user'?mask(m.customer_phone):(BIZ?BIZ+' AI':'AI')}</span>
       <div class="t">${esc(m.text)}</div></div>`).join('')
     || '<div class="empty">Conversations appear here in real time.</div>';
 }

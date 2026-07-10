@@ -1,5 +1,7 @@
-"""Persistence. Uses Firestore if Firebase creds are available (separate `rubi_*` namespace, never
-mixes with Clo's data); otherwise falls back to in-memory so the demo runs with zero DB setup.
+"""Persistence, namespaced per business slug. Uses Firestore if Firebase creds are available
+(collections `rubi_<slug>_*`, never mixes with Clo's data); otherwise falls back to in-memory so the
+demo runs with zero DB setup. Every business's data is fully isolated , a message to Rubirosa's line
+never shows up on Giorgio's dashboard.
 """
 import logging
 import os
@@ -12,7 +14,7 @@ logger = logging.getLogger("rubi.store")
 _db = None
 _USE_FS = False
 _lock = threading.Lock()
-_mem = {"rubi_reservations": [], "rubi_inquiries": [], "rubi_messages": []}
+_mem = {}   # slug -> {"reservations": [], "inquiries": [], "messages": []}
 
 
 def _init():
@@ -37,29 +39,36 @@ def _now():
     return time.time()
 
 
-def _add(col, doc):
+def _col(slug, kind):
+    return f"rubi_{slug}_{kind}"
+
+
+def _bucket(slug, kind):
+    return _mem.setdefault(slug, {}).setdefault(kind, [])
+
+
+def _add(slug, kind, doc):
     _init()
     if _USE_FS:
-        ref = _db.collection(col)
+        ref = _db.collection(_col(slug, kind))
         (ref.document(doc["id"]).set(doc) if doc.get("id") else ref.add(doc))
     else:
         with _lock:
-            _mem[col].append(doc)
+            _bucket(slug, kind).append(doc)
 
 
-def add_reservation(customer_phone, name, party_size, date, time_str, notes=""):
+def add_reservation(slug, customer_phone, name, party_size, date, time_str, notes=""):
     doc = {"id": uuid.uuid4().hex[:8].upper(), "customer_phone": customer_phone, "name": name,
            "party_size": party_size, "date": date, "time": time_str, "notes": notes,
            "status": "confirmed", "created_at": _now()}
-    _add("rubi_reservations", doc)
+    _add(slug, "reservations", doc)
     return doc["id"]
 
 
-def cancel_reservation(customer_phone, name):
+def cancel_reservation(slug, customer_phone, name):
     _init()
     if _USE_FS:
-        from firebase_admin import firestore
-        q = (_db.collection("rubi_reservations").where("customer_phone", "==", customer_phone)
+        q = (_db.collection(_col(slug, "reservations")).where("customer_phone", "==", customer_phone)
              .where("status", "==", "confirmed").limit(5).stream())
         for d in q:
             r = d.to_dict()
@@ -68,7 +77,7 @@ def cancel_reservation(customer_phone, name):
                 return r["id"]
         return None
     with _lock:
-        for r in reversed(_mem["rubi_reservations"]):
+        for r in reversed(_bucket(slug, "reservations")):
             if r["customer_phone"] == customer_phone and r["status"] == "confirmed" \
                     and (not name or name.lower() in r["name"].lower()):
                 r["status"] = "cancelled"
@@ -76,42 +85,42 @@ def cancel_reservation(customer_phone, name):
     return None
 
 
-def add_inquiry(customer_phone, name, question, notes=""):
+def add_inquiry(slug, customer_phone, name, question, notes=""):
     doc = {"id": uuid.uuid4().hex[:8].upper(), "customer_phone": customer_phone, "name": name,
            "question": question, "notes": notes, "created_at": _now()}
-    _add("rubi_inquiries", doc)
+    _add(slug, "inquiries", doc)
     return doc["id"]
 
 
-def log_message(customer_phone, role, text):
-    _add("rubi_messages", {"id": uuid.uuid4().hex[:10], "customer_phone": customer_phone,
-                           "role": role, "text": text, "created_at": _now()})
+def log_message(slug, customer_phone, role, text):
+    _add(slug, "messages", {"id": uuid.uuid4().hex[:10], "customer_phone": customer_phone,
+                            "role": role, "text": text, "created_at": _now()})
 
 
-def get_history(customer_phone, limit=12):
+def get_history(slug, customer_phone, limit=12):
     _init()
     if _USE_FS:
         from firebase_admin import firestore
-        q = (_db.collection("rubi_messages").where("customer_phone", "==", customer_phone)
+        q = (_db.collection(_col(slug, "messages")).where("customer_phone", "==", customer_phone)
              .order_by("created_at", direction=firestore.Query.DESCENDING).limit(limit).stream())
         return list(reversed([d.to_dict() for d in q]))
     with _lock:
-        msgs = [m for m in _mem["rubi_messages"] if m["customer_phone"] == customer_phone]
+        msgs = [m for m in _bucket(slug, "messages") if m["customer_phone"] == customer_phone]
     return msgs[-limit:]
 
 
-def dashboard_data():
+def dashboard_data(slug):
     _init()
     if _USE_FS:
         from firebase_admin import firestore
 
-        def recent(col, n):
-            return [d.to_dict() for d in _db.collection(col)
+        def recent(kind, n):
+            return [d.to_dict() for d in _db.collection(_col(slug, kind))
                     .order_by("created_at", direction=firestore.Query.DESCENDING).limit(n).stream()]
-        return {"reservations": recent("rubi_reservations", 50),
-                "inquiries": recent("rubi_inquiries", 50),
-                "messages": recent("rubi_messages", 100)}
+        return {"reservations": recent("reservations", 50),
+                "inquiries": recent("inquiries", 50),
+                "messages": recent("messages", 100)}
     with _lock:
-        srt = lambda col, n: sorted(_mem[col], key=lambda x: x["created_at"], reverse=True)[:n]
-        return {"reservations": srt("rubi_reservations", 50),
-                "inquiries": srt("rubi_inquiries", 50), "messages": srt("rubi_messages", 100)}
+        srt = lambda kind, n: sorted(_bucket(slug, kind), key=lambda x: x["created_at"], reverse=True)[:n]
+        return {"reservations": srt("reservations", 50),
+                "inquiries": srt("inquiries", 50), "messages": srt("messages", 100)}
