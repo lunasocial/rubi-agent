@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rubirosa , Receptionist</title>
+<style>
+  :root { --bg:#0f0f10; --card:#1a1a1c; --line:#2a2a2e; --text:#f2ede4; --muted:#8a8a90;
+          --accent:#e0563a; --green:#3ecf8e; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,system-ui,sans-serif; }
+  header { padding:22px 28px; border-bottom:1px solid var(--line); display:flex;
+           align-items:baseline; gap:14px; }
+  header h1 { font-size:20px; letter-spacing:.5px; }
+  header .sub { color:var(--muted); font-size:13px; text-transform:uppercase; letter-spacing:2px; }
+  header .live { margin-left:auto; color:var(--green); font-size:12px; text-transform:uppercase;
+                 letter-spacing:1px; display:flex; align-items:center; gap:7px; }
+  header .dot { width:8px; height:8px; border-radius:50%; background:var(--green);
+                animation:pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; padding:22px 28px; }
+  .stat { background:var(--card); border:1px solid var(--line); padding:18px 20px; }
+  .stat .n { font-size:32px; font-weight:600; }
+  .stat .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:1.5px;
+             margin-top:6px; }
+  .grid { display:grid; grid-template-columns:1.3fr 1fr; gap:14px; padding:0 28px 28px; }
+  .panel { background:var(--card); border:1px solid var(--line); }
+  .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:2px; color:var(--muted);
+              padding:16px 20px; border-bottom:1px solid var(--line); }
+  .row { padding:14px 20px; border-bottom:1px solid var(--line); font-size:14px; }
+  .row:last-child { border-bottom:none; }
+  .row .top { display:flex; justify-content:space-between; align-items:center; }
+  .row .name { font-weight:600; }
+  .row .meta { color:var(--muted); font-size:13px; margin-top:3px; }
+  .tag { font-size:11px; text-transform:uppercase; letter-spacing:1px; padding:3px 8px;
+         border:1px solid var(--line); color:var(--green); }
+  .tag.cancelled { color:var(--muted); }
+  .empty { padding:28px 20px; color:var(--muted); font-size:13px; }
+  .msg { padding:10px 20px; font-size:13px; border-bottom:1px solid var(--line); }
+  .msg .who { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+  .msg.user .who { color:var(--accent); }
+  .full { grid-column:1 / -1; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="biz">Rubirosa</h1>
+  <span class="sub">Receptionist Dashboard</span>
+  <span class="live"><span class="dot"></span> Live</span>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="n" id="s-res">0</div><div class="l">Reservations</div></div>
+  <div class="stat"><div class="n" id="s-cov">0</div><div class="l">Covers Booked</div></div>
+  <div class="stat"><div class="n" id="s-inq">0</div><div class="l">Inquiries</div></div>
+  <div class="stat"><div class="n" id="s-conv">0</div><div class="l">Conversations</div></div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Reservations</h2>
+    <div id="res"></div>
+  </div>
+  <div class="panel">
+    <h2>Inquiries &amp; Requests</h2>
+    <div id="inq"></div>
+  </div>
+  <div class="panel full">
+    <h2>Live Conversation Feed</h2>
+    <div id="feed"></div>
+  </div>
+</div>
+
+<script>
+const esc = s => (s||"").replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const when = ts => { if(!ts) return ""; const d=new Date(ts*1000);
+  return d.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}); };
+const mask = p => (p||"").replace(/^(\+?\d{0,2}).*(\d{2})$/, "$1•••$2");
+
+async function refresh() {
+  let d; try { d = await (await fetch('/api/data')).json(); } catch { return; }
+  document.getElementById('biz').textContent = d.business || 'Rubirosa';
+  const res = d.reservations||[], inq = d.inquiries||[], msgs = d.messages||[];
+  const active = res.filter(r => r.status !== 'cancelled');
+  document.getElementById('s-res').textContent = active.length;
+  document.getElementById('s-cov').textContent = active.reduce((a,r)=>a+(+r.party_size||0),0);
+  document.getElementById('s-inq').textContent = inq.length;
+  document.getElementById('s-conv').textContent = new Set(msgs.map(m=>m.customer_phone)).size;
+
+  document.getElementById('res').innerHTML = res.length ? res.map(r => `
+    <div class="row"><div class="top">
+      <span class="name">${esc(r.name)||'Guest'} , party of ${esc(''+(r.party_size||'?'))}</span>
+      <span class="tag ${r.status==='cancelled'?'cancelled':''}">${esc(r.status||'confirmed')}</span>
+    </div><div class="meta">${esc(r.date)} at ${esc(r.time)} · ${mask(r.customer_phone)} · #${esc(r.id)}</div>
+    ${r.notes?`<div class="meta">${esc(r.notes)}</div>`:''}</div>`).join('')
+    : '<div class="empty">No reservations yet.</div>';
+
+  document.getElementById('inq').innerHTML = inq.length ? inq.map(q => `
+    <div class="row"><div class="name">${esc(q.name)||'Caller'}</div>
+    <div class="meta">${esc(q.question)}</div>
+    <div class="meta">${mask(q.customer_phone)} · ${when(q.created_at)}</div></div>`).join('')
+    : '<div class="empty">No inquiries yet.</div>';
+
+  document.getElementById('feed').innerHTML = msgs.length ? msgs.slice().reverse().slice(-40).map(m => `
+    <div class="msg ${m.role==='user'?'user':''}">
+      <span class="who">${m.role==='user'?mask(m.customer_phone):'Rubirosa'}</span>
+      &nbsp; ${esc(m.text)}</div>`).join('')
+    : '<div class="empty">Conversations will appear here as customers text in.</div>';
+}
+refresh(); setInterval(refresh, 4000);
+</script>
+</body>
+</html>
