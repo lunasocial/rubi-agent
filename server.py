@@ -27,8 +27,12 @@ async def health():
 
 @app.post("/webhook")
 async def webhook(request: Request):
+    import json
+    raw = await request.body()
+    if not linq.verify(raw, request.headers):
+        return JSONResponse({"ok": False}, status_code=401)
     try:
-        payload = await request.json()
+        payload = json.loads(raw or b"{}")
     except Exception:
         return JSONResponse({"ok": True})
     parsed = linq.parse_inbound(payload)

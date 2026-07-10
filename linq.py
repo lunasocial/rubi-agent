@@ -34,6 +34,36 @@ async def send(recipient: str, text: str) -> bool:
     return False
 
 
+def verify(raw_body, headers) -> bool:
+    """Standard-Webhooks HMAC check. Shadow mode unless RUBI_VERIFY_WEBHOOKS=1: logs pass/fail but
+    always allows, so we confirm the scheme on real traffic before enforcing."""
+    import base64
+    import hashlib
+    import hmac
+    secret = os.getenv("LINQ_WEBHOOK_SECRET", "")
+    enforce = os.getenv("RUBI_VERIFY_WEBHOOKS", "0") == "1"
+    if not secret:
+        return not enforce
+    h = {k.lower(): v for k, v in dict(headers).items()}
+    sig = h.get("svix-signature") or h.get("webhook-signature") or h.get("x-signature") or ""
+    mid = h.get("svix-id") or h.get("webhook-id") or ""
+    ts = h.get("svix-timestamp") or h.get("webhook-timestamp") or ""
+    ok = False
+    try:
+        key = base64.b64decode(secret.split("_", 1)[-1]) if secret.startswith("whsec_") else secret.encode()
+        body = raw_body if isinstance(raw_body, bytes) else (raw_body or "").encode()
+        signed = f"{mid}.{ts}.".encode() + body if (mid or ts) else body
+        expected = base64.b64encode(hmac.new(key, signed, hashlib.sha256).digest()).decode()
+        for part in sig.split():
+            if hmac.compare_digest(part.split(",", 1)[-1], expected):
+                ok = True
+                break
+    except Exception:
+        logger.debug("verify error", exc_info=True)
+    logger.info("webhook sig verified=%s enforce=%s", ok, enforce)
+    return ok if enforce else True
+
+
 def parse_inbound(payload: dict):
     """Return (sender_phone, text) or None (our own echo / non-text / malformed)."""
     d = payload.get("data") or payload.get("message") or payload
