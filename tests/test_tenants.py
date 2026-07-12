@@ -28,7 +28,11 @@ os.environ["RUBI_API_TOKEN"] = "test-token"
 
 import agent
 import businesses
+import context
 import store
+
+context._redis_tried = True     # hermetic: in-process cache only
+context._redis = None
 
 
 def test_restaurant_template_parity():
@@ -65,10 +69,9 @@ def test_webhook_routing_and_api():
     assert businesses.active_slug() == "rubirosa"
     r = c.post("/webhook/giorgios", json=payload)
     assert r.status_code == 200 and r.json()["ok"], r.text
-    # the background task logs the user message under giorgios (agent reply path is stubbed-genai
-    # and fails gracefully; the inbound log happens first inside handle())
-    import time
-    time.sleep(0.3)
+    # drive the processing pipeline directly (TestClient's per-request loop drops background
+    # tasks; uvicorn's persistent loop runs them , covered by the live smoke test)
+    asyncio.run(server._process("giorgios", "+15559990000", "do you have gluten free pasta"))
     hist = store.get_history("giorgios", "+15559990000")
     assert any("gluten" in m.get("text", "") for m in hist), hist
     assert store.get_history("rubirosa", "+15559990000") == []

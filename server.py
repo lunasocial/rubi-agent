@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 import agent
 import api
 import businesses
+import governance
 import linq
 import store
 
@@ -38,8 +39,15 @@ async def health():
 
 async def _process(slug: str, phone: str, text: str) -> None:
     try:
+        await governance.count(slug, "inbound")
+        proceed, direct = await governance.gate(slug, phone, text)
+        if not proceed:
+            if direct:
+                await linq.send(phone, direct)
+            return
         reply = await agent.handle(slug, phone, text)
         await linq.send(phone, reply)
+        await governance.count(slug, "reply")
     except Exception:
         logger.exception("handle failed for %s", phone)
 
@@ -73,6 +81,33 @@ async def webhook_tenant(slug: str, request: Request):
     if not businesses.known(slug):
         return JSONResponse({"ok": False, "error": "unknown tenant"}, status_code=404)
     return await _inbound(request, slug)
+
+
+@app.post("/event/missed_call")
+async def missed_call(request: Request):
+    """Telephony hook (future): a call to a tenant's line wasn't answered -> text the caller back.
+    Body: {"tenant": slug, "caller": "+1..."}. Flag-gated; honors consent + pause."""
+    if not api._authed(request):
+        return JSONResponse({"ok": False}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False}, status_code=400)
+    slug, caller = (body.get("tenant") or "").strip(), (body.get("caller") or "").strip()
+    if not (slug and caller and businesses.known(slug)):
+        return JSONResponse({"ok": False, "error": "bad tenant/caller"}, status_code=400)
+    if os.getenv("RUBI_MISSED_CALL_ENABLED", "0") != "1":
+        return JSONResponse({"ok": True, "sent": False, "reason": "disabled"})
+    if not governance.can_text(slug, caller):
+        return JSONResponse({"ok": True, "sent": False, "reason": "suppressed"})
+    name = businesses.get(slug).get("name", "us")
+    msg = (f"Hi, sorry we missed your call at {name}. I'm the assistant , I can help with hours, "
+           "menu, or a booking right here. Reply STOP to opt out.")
+    sent = await linq.send(caller, msg)
+    if sent:
+        store.log_message(slug, caller, "assistant", msg)
+        await governance.count(slug, "missed_call")
+    return JSONResponse({"ok": True, "sent": bool(sent)})
 
 
 @app.get("/{slug}/api/data")

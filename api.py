@@ -14,6 +14,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 import businesses
+import governance
 import store
 
 logger = logging.getLogger("rubi.api")
@@ -98,4 +99,5 @@ async def tenant_stats(slug: str, request: Request):
         "messages_7d": len([m for m in msgs if day(m.get("created_at")) < 7]),
         "customers_7d": len({m.get("customer_phone") for m in inbound
                              if day(m.get("created_at")) < 7}),
+        "today": await governance.day_counts(slug),
     }
