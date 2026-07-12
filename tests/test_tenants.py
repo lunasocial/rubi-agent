@@ -87,11 +87,24 @@ def test_webhook_routing_and_api():
     assert c.get("/api/v1/tenants/giorgios/data", headers=h).status_code == 200
     stats = c.get("/api/v1/tenants/giorgios/stats", headers=h).json()
     assert stats["messages"] >= 1 and stats["conversations"] >= 1, stats
+    assert "conversion_rate" in stats and "latency" in stats and "today" in stats, stats
     cust = c.get("/api/v1/tenants/giorgios/customers", headers=h).json()
     assert "customers" in cust
     assert c.get("/api/v1/tenants/nope/data", headers=h).status_code == 404
     assert c.get("/api/v1/tenants", headers={"Authorization": "Bearer wrong"}).status_code == 401
-    print("ok: /api/v1 auth + data + stats + customers")
+    print("ok: /api/v1 auth + data + stats(+conversion/latency) + customers")
+
+    # owner scoping: a firebase-style ident only reaches tenants that list them in `owners`
+    import api
+    admin = {"admin": True}
+    owner = {"admin": False, "uid": "u123", "email": "owner@giorgios.com"}
+    businesses.BUSINESSES["giorgios"]["owners"] = ["owner@giorgios.com"]
+    assert api._can_access(admin, "rubirosa") and api._can_access(admin, "giorgios")
+    assert api._can_access(owner, "giorgios")
+    assert not api._can_access(owner, "rubirosa")
+    assert not api._can_access(None, "giorgios")
+    del businesses.BUSINESSES["giorgios"]["owners"]
+    print("ok: per-tenant owner scoping")
 
     # legacy routes untouched
     assert c.get("/health").json()["ok"]

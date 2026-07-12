@@ -98,6 +98,34 @@ async def day_counts(tenant: str, kinds=("inbound", "reply", "block", "missed_ca
     return out
 
 
+_LAT_CAP = 500   # rolling sample per tenant per day
+
+
+async def record_latency(tenant: str, ms: int) -> None:
+    """Rolling per-day latency sample (JSON list in the cache , small, capped)."""
+    try:
+        key = f"obs:{tenant}:{time.strftime('%Y-%m-%d')}:lat"
+        import json
+        cur = json.loads(await context._cache_get(key) or "[]")
+        cur.append(int(ms))
+        await context._cache_set(key, json.dumps(cur[-_LAT_CAP:]), ex=2 * 86400)
+    except Exception:
+        pass
+
+
+async def latency_stats(tenant: str) -> dict:
+    try:
+        import json
+        cur = sorted(json.loads(
+            await context._cache_get(f"obs:{tenant}:{time.strftime('%Y-%m-%d')}:lat") or "[]"))
+        if not cur:
+            return {"p50_ms": None, "p95_ms": None, "samples": 0}
+        return {"p50_ms": cur[len(cur) // 2], "p95_ms": cur[min(len(cur) - 1, int(len(cur) * 0.95))],
+                "samples": len(cur)}
+    except Exception:
+        return {"p50_ms": None, "p95_ms": None, "samples": 0}
+
+
 async def gate(tenant: str, phone: str, text: str):
     """Pre-agent gate. Returns (proceed: bool, direct_reply: str). Deterministic, never LLM.
     proceed=False + reply='' means drop silently (suppressed or paused/capped)."""

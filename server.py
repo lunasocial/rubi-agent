@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 
 try:                                     # load .env before importing modules that read env at import
     from dotenv import load_dotenv
@@ -29,6 +30,13 @@ logger = logging.getLogger("rubi.server")
 app = FastAPI(title="Rubi Receptionist")
 app.include_router(api.router)
 
+# Browser calls from the web dashboard's subdomain (unset = same-origin/proxy only).
+_cors = [o.strip() for o in os.getenv("RUBI_CORS_ORIGINS", "").split(",") if o.strip()]
+if _cors:
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(CORSMiddleware, allow_origins=_cors, allow_methods=["*"],
+                       allow_headers=["*"])
+
 _DASH = os.path.join(os.path.dirname(__file__), "dashboard", "index.html")
 
 
@@ -45,7 +53,9 @@ async def _process(slug: str, phone: str, text: str) -> None:
             if direct:
                 await linq.send(phone, direct)
             return
+        t0 = time.time()
         reply = await agent.handle(slug, phone, text)
+        await governance.record_latency(slug, int((time.time() - t0) * 1000))
         await linq.send(phone, reply)
         await governance.count(slug, "reply")
     except Exception:
