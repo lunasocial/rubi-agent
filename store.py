@@ -122,6 +122,25 @@ def get_history(slug, customer_phone, limit=12):
     return msgs[-limit:]
 
 
+def customers_for(tenant, limit=200):
+    """Known end-customers for a tenant (from the identity layer), newest activity first."""
+    _init()
+    out = []
+    if _USE_FS:
+        try:
+            for d in (_db.collection("rubi_customers").where("tenant", "==", tenant)
+                      .limit(limit).stream()):
+                out.append(d.to_dict() or {})
+        except Exception:
+            logger.exception("customers query failed")
+    else:
+        with _lock:
+            out = [dict(v) for v in _mem_docs.get("rubi_customers", {}).values()
+                   if v.get("tenant") == tenant]
+    out.sort(key=lambda c: c.get("last_seen") or 0, reverse=True)
+    return out[:limit]
+
+
 def dashboard_data(slug):
     _init()
     if _USE_FS:

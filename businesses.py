@@ -1,8 +1,36 @@
-"""All businesses this deployment serves, keyed by slug. The 904 line serves whichever slug is ACTIVE
-(see active_business()); each business has its own dashboard at /<slug>/ and its own isolated data.
-Menus/prices are seeded from public info , owner confirms.
+"""Tenant registry. Tenants live in Firestore `tenants/{slug}` (provisioned via provision.py, cached
+60s); the dict below seeds the three demo restaurants and doubles as the no-Firestore fallback. Each
+tenant gets its own dashboard at /<slug>/, isolated data, and (when it has a dedicated line) its own
+webhook at /webhook/<slug>. The shared demo line serves whichever slug is ACTIVE (see active_slug()).
+
+An industry template supplies the vocabulary the agent speaks per vertical; a tenant's config overrides
+its template. Menus/prices are seeded from public info , owner confirms.
 """
+import logging
 import os
+import threading
+import time
+
+logger = logging.getLogger("rubi.businesses")
+
+TEMPLATES = {
+    "restaurant": {"kind_label": "restaurant", "catalog_label": "MENU",
+                   "catalog_rule": "the ONLY items you may name , never invent a dish or a price we don't list",
+                   "booking_noun": "reservation", "extra": ""},
+    "cafe": {"kind_label": "cafe", "catalog_label": "MENU",
+             "catalog_rule": "the ONLY items you may name , never invent a drink, dish, or price we don't list",
+             "booking_noun": "order", "extra": ""},
+    "hotel": {"kind_label": "hotel", "catalog_label": "ROOMS & OFFERINGS",
+              "catalog_rule": "the ONLY room types and amenities you may name , never invent an offering or a rate we don't list",
+              "booking_noun": "booking", "extra": ""},
+    "retail": {"kind_label": "store", "catalog_label": "PRODUCTS & SERVICES",
+               "catalog_rule": "the ONLY products and services you may name , never invent an item or a price we don't list",
+               "booking_noun": "order", "extra": ""},
+}
+
+
+def template(cfg: dict) -> dict:
+    return TEMPLATES.get(cfg.get("type", "restaurant"), TEMPLATES["restaurant"])
 
 BUSINESSES = {
     "rubirosa": {
@@ -80,13 +108,70 @@ BUSINESSES = {
 
 _ACTIVE_FILE = os.path.join(os.path.dirname(__file__), "active_business.txt")
 
+_TENANT_TTL = 60
+_tenant_cache: dict = {}   # slug -> (cfg|None, fetched_at)
+_slugs_cache = (None, 0.0)
+_tlock = threading.Lock()
+
+
+def _fs_tenant(slug: str):
+    """Firestore tenants/{slug}, cached briefly. None when absent or no Firestore."""
+    now = time.time()
+    with _tlock:
+        hit = _tenant_cache.get(slug)
+        if hit and now - hit[1] < _TENANT_TTL:
+            return hit[0]
+    cfg = None
+    try:
+        import store
+        db = store.db()
+        if db is not None:
+            doc = db.collection("tenants").document(slug).get()
+            cfg = doc.to_dict() if doc.exists else None
+    except Exception:
+        logger.debug("tenant fetch failed for %s", slug, exc_info=True)
+    with _tlock:
+        _tenant_cache[slug] = (cfg, now)
+    return cfg
+
+
+def invalidate(slug: str = "") -> None:
+    global _slugs_cache
+    with _tlock:
+        (_tenant_cache.pop(slug, None) if slug else _tenant_cache.clear())
+        _slugs_cache = (None, 0.0)
+
+
+def known(slug: str) -> bool:
+    return slug in BUSINESSES or _fs_tenant(slug) is not None
+
+
+def all_slugs() -> list:
+    """Seed slugs + provisioned Firestore tenants (cached)."""
+    global _slugs_cache
+    now = time.time()
+    if _slugs_cache[0] is not None and now - _slugs_cache[1] < _TENANT_TTL:
+        return _slugs_cache[0]
+    slugs = list(BUSINESSES)
+    try:
+        import store
+        db = store.db()
+        if db is not None:
+            for d in db.collection("tenants").limit(200).stream():
+                if d.id not in slugs:
+                    slugs.append(d.id)
+    except Exception:
+        pass
+    _slugs_cache = (slugs, now)
+    return slugs
+
 
 def active_slug() -> str:
-    """Which business the phone line currently serves. Read live per request , switching needs no restart."""
+    """Which tenant the shared demo line currently serves. Read live , switching needs no restart."""
     try:
         with open(_ACTIVE_FILE) as f:
             s = f.read().strip()
-            if s in BUSINESSES:
+            if s and known(s):
                 return s
     except OSError:
         pass
@@ -94,7 +179,7 @@ def active_slug() -> str:
 
 
 def get(slug: str) -> dict:
-    return BUSINESSES.get(slug) or BUSINESSES["rubirosa"]
+    return _fs_tenant(slug) or BUSINESSES.get(slug) or BUSINESSES["rubirosa"]
 
 
 def menu_text(cfg: dict) -> str:

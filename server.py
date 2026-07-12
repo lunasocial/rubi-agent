@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 
 import agent
+import api
 import businesses
 import linq
 import store
@@ -25,18 +26,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("rubi.server")
 
 app = FastAPI(title="Rubi Receptionist")
+app.include_router(api.router)
 
 _DASH = os.path.join(os.path.dirname(__file__), "dashboard", "index.html")
 
 
 @app.get("/health")
 async def health():
-    return {"ok": True, "active": businesses.active_slug(),
-            "businesses": list(businesses.BUSINESSES.keys())}
+    return {"ok": True, "active": businesses.active_slug(), "businesses": businesses.all_slugs()}
 
 
-@app.post("/webhook")
-async def webhook(request: Request):
+async def _process(slug: str, phone: str, text: str) -> None:
+    try:
+        reply = await agent.handle(slug, phone, text)
+        await linq.send(phone, reply)
+    except Exception:
+        logger.exception("handle failed for %s", phone)
+
+
+async def _inbound(request: Request, slug: str):
     raw = await request.body()
     if not linq.verify(raw, request.headers):
         return JSONResponse({"ok": False}, status_code=401)
@@ -48,23 +56,28 @@ async def webhook(request: Request):
     if not parsed:
         return JSONResponse({"ok": True})
     phone, text = parsed
-    slug = businesses.active_slug()
     logger.info("inbound [%s] %s: %s", slug, phone, text[:120])
-
-    async def _work():
-        try:
-            reply = await agent.handle(slug, phone, text)
-            await linq.send(phone, reply)
-        except Exception:
-            logger.exception("handle failed for %s", phone)
-
-    asyncio.create_task(_work())   # ack the webhook fast; process in the background
+    asyncio.create_task(_process(slug, phone, text))   # ack fast; process in the background
     return JSONResponse({"ok": True})
+
+
+@app.post("/webhook")
+async def webhook(request: Request):
+    """Shared demo line: serves whichever tenant is active (switch.py)."""
+    return await _inbound(request, businesses.active_slug())
+
+
+@app.post("/webhook/{slug}")
+async def webhook_tenant(slug: str, request: Request):
+    """Dedicated per-tenant line: that tenant's Linq number posts here , no switching."""
+    if not businesses.known(slug):
+        return JSONResponse({"ok": False, "error": "unknown tenant"}, status_code=404)
+    return await _inbound(request, slug)
 
 
 @app.get("/{slug}/api/data")
 async def data(slug: str):
-    if slug not in businesses.BUSINESSES:
+    if not businesses.known(slug):
         return JSONResponse({"error": "unknown business"}, status_code=404)
     try:
         d = await asyncio.to_thread(store.dashboard_data, slug)
@@ -79,14 +92,14 @@ async def data(slug: str):
 
 @app.get("/{slug}/")
 async def dashboard(slug: str):
-    if slug not in businesses.BUSINESSES:
+    if not businesses.known(slug):
         return JSONResponse({"error": "unknown business"}, status_code=404)
     return FileResponse(_DASH)
 
 
 @app.get("/{slug}")
 async def dashboard_noslash(slug: str):
-    if slug not in businesses.BUSINESSES:
+    if not businesses.known(slug):
         return JSONResponse({"error": "unknown business"}, status_code=404)
     return RedirectResponse(url=f"{slug}/")
 

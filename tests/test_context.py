@@ -30,6 +30,10 @@ import agent
 import businesses
 import context
 
+# hermetic: never touch a real local redis , cache state must not leak between runs
+context._redis_tried = True
+context._redis = None
+
 PHONE = "+15551234567"
 FAKE = {
     "i'm allergic to peanuts and i love tiramisu": [1.0, 0.0, 0.0],
