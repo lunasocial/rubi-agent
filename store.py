@@ -15,6 +15,7 @@ _db = None
 _USE_FS = False
 _lock = threading.Lock()
 _mem = {}   # slug -> {"reservations": [], "inquiries": [], "messages": []}
+_mem_docs = {}   # collection -> {doc_id: dict}  (keyed-doc fallback, used by context.py)
 
 
 def _init():
@@ -33,6 +34,18 @@ def _init():
         logger.info("store: using Firestore")
     except Exception:
         logger.warning("store: no Firebase creds , using in-memory (fine for a demo)")
+
+
+def db():
+    """The Firestore client, or None when running in-memory (demo mode)."""
+    _init()
+    return _db if _USE_FS else None
+
+
+def mem_doc(collection: str, doc_id: str) -> dict:
+    """In-memory keyed-doc fallback: a live dict for {collection}/{doc_id}."""
+    with _lock:
+        return _mem_docs.setdefault(collection, {}).setdefault(doc_id, {})
 
 
 def _now():

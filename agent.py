@@ -17,6 +17,7 @@ from google.genai import types
 
 import availability
 import businesses
+import context
 import store
 
 logger = logging.getLogger("rubi.agent")
@@ -42,7 +43,7 @@ def _has_availability(cfg: dict) -> bool:
     return bool((cfg.get("resy") or {}).get("venue_id") or (cfg.get("opentable") or {}).get("rid"))
 
 
-def _system(cfg: dict, today: str) -> str:
+def _system(cfg: dict, today: str, ctx: str = "") -> str:
     avail = ""
     if _has_availability(cfg):
         avail = """
@@ -78,7 +79,7 @@ HOW TO BEHAVE:
 - For anything you can't handle, or a special request/complaint, call log_inquiry so the team sees it.
   If it genuinely needs a person right now, call escalate_to_owner.
 - Never claim a table is held or confirmed beyond what the tool returned. Never promise something we
-  don't offer. If unsure, it's always better to log it for the team than to guess."""
+  don't offer. If unsure, it's always better to log it for the team than to guess.""" + (f"\n\n{ctx}" if ctx else "")
 
 
 def _to_hhmm(natural: str) -> str:
@@ -127,6 +128,23 @@ def _tools(slug: str, phone: str, cfg: dict):
 
         tools.append(check_availability)
 
+    if context.enabled():
+        def remember_about_customer(likes: str = "", dislikes: str = "", dietary: str = "",
+                                    preferences: str = "", occasions: str = "", notes: str = "",
+                                    name: str = "") -> str:
+            """Save something lasting about this customer (comma-separated per field): tastes,
+            dietary needs, preferences (seating, timing), occasions (birthday/anniversary), their
+            name. Only high-signal facts worth remembering next visit."""
+            context.write_profile(slug, phone,
+                                  {"likes": likes, "dislikes": dislikes, "dietary": dietary,
+                                   "preferences": preferences, "occasions": occasions,
+                                   "notes": notes}, name)
+            if name:
+                context.touch_customer(slug, phone, name)
+            return "Noted."
+
+        tools.append(remember_about_customer)
+
     return tools
 
 
@@ -141,12 +159,18 @@ async def handle(slug: str, phone: str, text: str) -> str:
     ]
 
     today = _today_ny()
+    ctx = ""
+    if context.enabled():
+        try:
+            ctx = await asyncio.wait_for(context.assemble(slug, phone, text), timeout=2.5)
+        except Exception:
+            ctx = ""
 
     def _run() -> str:
         resp = _c().models.generate_content(
             model=_MODEL, contents=contents,
             config=types.GenerateContentConfig(
-                system_instruction=_system(cfg, today), tools=_tools(slug, phone, cfg),
+                system_instruction=_system(cfg, today, ctx), tools=_tools(slug, phone, cfg),
                 temperature=0.5))
         return (resp.text or "").strip()
 
@@ -157,4 +181,6 @@ async def handle(slug: str, phone: str, text: str) -> str:
         reply = ""
     reply = reply or "Sorry, I didn't catch that , could you say it once more?"
     store.log_message(slug, phone, "assistant", reply)
+    if context.enabled():
+        asyncio.create_task(context.after_turn(slug, phone, text))
     return reply
