@@ -82,6 +82,62 @@ BUSINESSES = {
             "Desserts": ["Cannoli", "Tiramisu"],
         },
     },
+    "saint-urban": {
+        "name": "Saint Urban", "type": "restaurant", "cuisine": "wine-focused European",
+        "descriptor": "wine-driven European restaurant",
+        "neighborhood": "Flatiron, Manhattan", "address": "43 E 20th St, New York, NY 10003",
+        "phone": "(646) 988-1544",
+        "known_for": "a 3,000-bottle wine cellar and a monthly-changing seasonal menu from "
+                     "chef-sommelier Jared Ian Stafford-Hill (Gramercy Tavern, Veritas); named one of "
+                     "The Infatuation's Best New Restaurants 2025",
+        "owner_phone": "",
+        "reservation_policy": "We're closed for the summer and reopening in August. We're happy to "
+                              "take your name and note a reservation request for reopening , the team "
+                              "will confirm dates once we're back. In season, reservations run "
+                              "through Resy.",
+        "takeout": "Not while we're closed for the summer , back in August.",
+        "hours": {"Monday": "Closed for summer (reopening August)",
+                  "Tuesday": "Closed for summer (reopening August)",
+                  "Wednesday": "Closed for summer (reopening August)",
+                  "Thursday": "Closed for summer (reopening August)",
+                  "Friday": "Closed for summer (reopening August)",
+                  "Saturday": "Closed for summer (reopening August)",
+                  "Sunday": "Closed for summer (reopening August)"},
+        "menu": {
+            "Wine": ["A 3,000-bottle cellar , the sommelier guides pairings; ask and we'll have "
+                     "the team recommend"],
+            "Kitchen": ["The menu changes monthly with the season , the team confirms current "
+                        "dishes when we reopen in August"],
+        },
+        "resy": {"venue_id": "6150", "city": "ny", "url_slug": "saint-urban-wine-bar"},
+    },
+    "lenlen": {
+        "name": "LenLen", "type": "restaurant", "cuisine": "Thai",
+        "descriptor": "Thai restaurant and late-night bar, styled after a 1970s Bangkok shophouse",
+        "neighborhood": "Flatiron, Manhattan", "address": "40 E 20th St, New York, NY 10003",
+        "phone": "(646) 429-8220",
+        "known_for": "seasonal Bangkok-shophouse cooking from chef Peter Ki Suk Tondreau, a "
+                     "design-forward retro room with a Thai grocery front, cocktails, and a "
+                     "late-night menu",
+        "owner_phone": "",
+        "reservation_policy": "Reservations through Resy, and walk-ins are welcome. We also run a "
+                              "late-night menu for the bar crowd.",
+        "takeout": "We have a Thai grocery counter up front; ask and the team will confirm takeout "
+                   "for kitchen dishes.",
+        "hours": {"Monday": "11:30 AM - 12:00 AM", "Tuesday": "11:30 AM - 12:00 AM",
+                  "Wednesday": "11:30 AM - 12:00 AM", "Thursday": "11:30 AM - 12:00 AM",
+                  "Friday": "11:30 AM - 12:00 AM", "Saturday": "11:30 AM - 12:00 AM",
+                  "Sunday": "11:30 AM - 12:00 AM"},
+        "menu": {
+            "Kitchen (seasonal , changes often, team confirms current menu)": [
+                "Crab Durian Curry", "Duck Red Curry", "Chicken Green Curry", "Beef Tartare Larb",
+                "Som Tum", "Wagyu Beef Boat Noodle Soup"],
+            "Cocktails & Drinks": ["Five-Spice Boulevardier", "Lemongrass Gimlet",
+                "Tomato Som Tum", "Thai Tea (orange blossom, cardamom)"],
+            "Late Night": ["A dedicated late-night menu runs at the bar , team confirms tonight's"],
+        },
+        "resy": {"venue_id": "89121", "city": "ny", "url_slug": "lenlen"},
+    },
     "giorgios": {
         "name": "Giorgio's of Gramercy", "type": "restaurant", "cuisine": "Italian-American",
         "neighborhood": "Gramercy, Manhattan", "address": "27 East 21st St, New York, NY 10010",
