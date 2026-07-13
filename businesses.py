@@ -82,6 +82,40 @@ BUSINESSES = {
             "Desserts": ["Cannoli", "Tiramisu"],
         },
     },
+    "carbone": {
+        "name": "Carbone", "type": "restaurant", "cuisine": "Italian-American",
+        "descriptor": "Michelin-starred Italian-American institution",
+        "neighborhood": "Greenwich Village, Manhattan",
+        "address": "181 Thompson St (between Bleecker & Houston), New York, NY 10012",
+        "known_for": "Major Food Group's flagship , tuxedoed captains, tableside Caesar alla ZZ, "
+                     "the Spicy Rigatoni Vodka, mid-century room with Julian Schnabel artwork; one "
+                     "of the hardest tables in New York",
+        "owner_phone": "",
+        "reservation_policy": "Reservations are through Resy (they're released about 30 days out and "
+                              "go quickly) or by email to reservations@carbonenewyork.com , we can't "
+                              "honor bookings made through unauthorized third parties. Dress code: no "
+                              "shorts, tank tops, or open-toed shoes. Private events are available on "
+                              "request.",
+        "takeout": "Ask and the team will confirm current takeout options , the dining room is the "
+                   "experience.",
+        "hours": {"Monday": "Dinner 5:00 PM - 11:30 PM",
+                  "Tuesday": "Lunch 11:30 AM - 2:00 PM · Dinner 5:00 PM - 11:30 PM",
+                  "Wednesday": "Lunch 11:30 AM - 2:00 PM · Dinner 5:00 PM - 11:30 PM",
+                  "Thursday": "Lunch 11:30 AM - 2:00 PM · Dinner 5:00 PM - 11:30 PM",
+                  "Friday": "Lunch 11:30 AM - 2:00 PM · Dinner 5:00 PM - 11:30 PM",
+                  "Saturday": "Lunch 11:30 AM - 2:00 PM · Dinner 5:00 PM - 11:30 PM",
+                  "Sunday": "Lunch 11:30 AM - 2:00 PM · Dinner 5:00 PM - 11:30 PM"},
+        "menu": {
+            "Signatures (the classics , team confirms the full current menu)": [
+                "Spicy Rigatoni Vodka", "Veal Parmesan (for the table)", "Caesar alla ZZ (tableside)",
+                "Meatballs", "Garlic Bread", "Tortellini al Ragu", "Lobster Fra Diavolo",
+                "Linguine Vongole"],
+            "Desserts": ["Tiramisu", "Carrot Cake", "Lemon Cheesecake"],
+            "Wine & BYOB": ["Deep Italian-leaning list , sommelier guides pairings",
+                "Corkage $110 per 750ml ($190 magnum); 3+ bottles coordinated in advance"],
+        },
+        "resy": {"venue_id": "6194", "city": "ny", "url_slug": "carbone"},
+    },
     "saint-urban": {
         "name": "Saint Urban", "type": "restaurant", "cuisine": "wine-focused European",
         "descriptor": "wine-driven European restaurant",
