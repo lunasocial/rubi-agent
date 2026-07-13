@@ -14,7 +14,7 @@ try:                                     # load .env before importing modules th
 except Exception:
     pass
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 
 import agent
@@ -23,6 +23,7 @@ import businesses
 import governance
 import linq
 import store
+import voice
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("rubi.server")
@@ -91,6 +92,32 @@ async def webhook_tenant(slug: str, request: Request):
     if not businesses.known(slug):
         return JSONResponse({"ok": False, "error": "unknown tenant"}, status_code=404)
     return await _inbound(request, slug)
+
+
+_PUBLIC_BASE = os.getenv("RUBI_PUBLIC_BASE", "https://agent.contextualintelligence.co/rubi")
+
+
+@app.post("/voice/incoming")
+async def voice_incoming(request: Request):
+    """Twilio hits this when a forwarded call arrives; we ring the tenant's real phone."""
+    raw = await request.body()
+    if not voice.verify(raw, str(request.url), request.headers):
+        return JSONResponse({"ok": False}, status_code=401)
+    form = voice.parse_form(raw)
+    slug = voice.tenant_for_call(form)
+    logger.info("voice incoming [%s] from %s", slug, form.get("From", "?"))
+    return Response(content=voice.incoming_twiml(slug, _PUBLIC_BASE), media_type="text/xml")
+
+
+@app.post("/voice/after")
+async def voice_after(request: Request, tenant: str = ""):
+    """Twilio posts the dial outcome here; a miss becomes a text-back from the tenant's line."""
+    raw = await request.body()
+    if not voice.verify(raw, str(request.url), request.headers):
+        return JSONResponse({"ok": False}, status_code=401)
+    form = voice.parse_form(raw)
+    slug = tenant if tenant and businesses.known(tenant) else voice.tenant_for_call(form)
+    return Response(content=await voice.after_dial(slug, form), media_type="text/xml")
 
 
 @app.post("/event/missed_call")
