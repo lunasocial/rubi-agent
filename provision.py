@@ -57,9 +57,15 @@ def provision(cfg: dict) -> None:
     businesses.invalidate(slug)
     print(f"\nProvisioned {cfg['name']}  ({slug}, {cfg['type']})")
     print(f"  dashboard : {BASE}/{slug}/")
-    print(f"  webhook   : {BASE}/webhook/{slug}   <- point this tenant's Linq number here")
-    if not cfg.get("line"):
-        print("  note      : no dedicated line yet , reachable via the shared demo line (switch.py)")
+    print(f"  webhook   : {BASE}/webhook/{slug}")
+    if cfg.get("line"):
+        print(f"  line      : {cfg['line']}")
+        print("  next      : import this number into Linq (messaging only , voice stays with their")
+        print("              carrier, staff keep answering calls) and point its webhook at the URL above.")
+    else:
+        print("  note      : no line yet , import the business's existing number into Linq (messaging")
+        print("              only), set `line`, and point its webhook at the URL above. Until then the")
+        print("              shared demo line reaches this tenant via switch.py.")
     print()
 
 
